@@ -7,5 +7,5 @@ interface ISales
     // 0 - admin
     // 1 - operator
     // ...
-    function hasRole(address account) external view returns(string memory);
+    function hasRole() external view returns(string memory);
 }

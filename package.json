@@ -16,6 +16,7 @@
   "author": "Cravcenco Nichita",
   "license": "ISC",
   "dependencies": {
-    "@openzeppelin/contracts": "^4.4.1"
+    "@openzeppelin/contracts": "^4.4.1",
+    "truffle-assertions": "^0.9.2"
   }
 }
