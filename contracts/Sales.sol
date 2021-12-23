@@ -10,7 +10,7 @@ contract Sales is Context, ISales
   uint256 private MAX_AMOUNT = 100;
 
   enum Role{NON_WL_INVESTOR, WL_INVESTOR, OPERATOR, ADMIN}
-  Role private chose_role = Role.NON_WL_INVESTOR;
+  //Role private chose_role = Role.NON_WL_INVESTOR;
 
   mapping(address => Role) public role;
 
@@ -41,10 +41,22 @@ contract Sales is Context, ISales
     MAX_AMOUNT = new_max;
   }
 
-
+  // modifiers
   modifier onlyAdmin()
   {
-    require(msg.sender != address(0), "Sales: current address is not an admin");
+    require(role[_msgSender()] == Role.ADMIN, "Sales: current address is not an admin");
+    _;
+  }
+  
+  modifier onlyOperator()
+  {
+    require(role[_msgSender()] == Role.OPERATOR, "Sales: current address is not an operator");
+    _;
+  }
+
+  modifier onlyWlInvestor()
+  {
+    require(role[_msgSender()] == Role.WL_INVESTOR, "Sales: current address is not in whitelist");
     _;
   }
 }

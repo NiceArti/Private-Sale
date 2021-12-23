@@ -14,13 +14,13 @@ contract("Ixswap Nft", function(accounts)
     let sales;
     before(async() => sales = await Sales.deployed())
 
-    it("hasRole(): must return role", async () =>
+    it("hasRole(): must return admin role to deployer", async () =>
     {
         let role = await sales.hasRole()
         assert.equal(role, roles.ADMIN, `${role} != ${roles.ADMIN}`)
     });
 
-    it("hasRole(): must return role", async () =>
+    it("hasRole(): must return not whitelist investor role to other person", async () =>
     {
         let role = await sales.hasRole({from: accounts[1]})
         assert.equal(role, roles.NON_WL_INVESTOR, `${role} != ${roles.NON_WL_INVESTOR}`)
