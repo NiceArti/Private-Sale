@@ -1,15 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./interfaces/ISales.sol";
 import "@openzeppelin/contracts/utils/Context.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "./interfaces/ISales.sol";
+import "./utils/Helpers.sol";
 
 contract Sales is Context, AccessControl
 {
+  using Helpers for string;
+
   uint256 private _min = 10;
   uint256 private _max = 100;
-
 
 
   // roles
@@ -17,7 +19,6 @@ contract Sales is Context, AccessControl
   bytes32 private constant OPERATOR = 'operator';
   bytes32 private constant WL_INVESTOR = 'wl_investor';
   bytes32 private constant NON_WL_INVESTOR = 'non_wl_investor';
-  //bytes32 public override constant DEFAULT_ADMIN_ROLE = NON_WL_INVESTOR;
 
   constructor()
   {
@@ -27,7 +28,7 @@ contract Sales is Context, AccessControl
   function checkRole(string memory _role, address account) 
   public view returns (bool)
   {
-    return super.hasRole(stringToBytes32(_role), account);
+    return super.hasRole(_role.toBytes32(), account);
   }
 
 
@@ -53,17 +54,4 @@ contract Sales is Context, AccessControl
     _max = new_max;
   }
 
-
-  // helper function
-  function stringToBytes32(string memory source) 
-  private pure returns (bytes32 result) 
-  {
-    bytes memory tempEmptyStringTest = bytes(source);
-    if (tempEmptyStringTest.length == 0) {
-      return 0x0;
-    }
-    assembly {
-      result := mload(add(source, 32))
-    }
-  }
 }
