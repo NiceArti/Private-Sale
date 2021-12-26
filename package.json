@@ -8,7 +8,7 @@
   },
   "scripts": {
     "test": "npx truffle test --network development",
-    "ganache": "npx --accounts 10 --networkId 123456789 --host 127.0.0.1 --port 8545",
+    "ganache": "npx ganache-cli --accounts 10 --networkId 123456789 --host 127.0.0.1 --port 8545",
     "test-headless": "npm run ganache > /dev/null & npm run test && kill $(lsof -t -i:8545) || kill $(lsof -t -i:8545)",
     "test-win": "npm run ganache-win && /dev/null & npm run test && taskkill /PID 8545 /F || taskkill /PID 8545 /F",
     "ganache-win": "start cmd.exe /c ganache-cli",

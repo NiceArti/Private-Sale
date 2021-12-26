@@ -11,6 +11,7 @@ contract.only("Uniswap", function(accounts)
     let usd;
 
     let ethPriceUSD = 0;
+    let priceUSD = 1;
 
     before(async() => 
     {
@@ -37,6 +38,7 @@ contract.only("Uniswap", function(accounts)
     {
         await uniswap.addLiquidity(eth.address, usd.address, 25, 100000)  
         ethPriceUSD = await uniswap.getPrice(usd.address, eth.address);
+
         assert.equal(ethPriceUSD, 4000, `${ethPriceUSD} != ${4000}`)
     })
 })
