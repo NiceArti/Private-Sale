@@ -3,5 +3,6 @@ pragma solidity ^0.8.0;
 
 interface ISales
 {
-    // maybe later
+    event RoleAdded(address, address, bytes32);
+    event RoleRemoved(address, address, bytes32);
 }
