@@ -128,19 +128,8 @@ contract("Sales", function(accounts)
             assert.equal(countOp, 3, `${countOp} != ${3}`)
         })
 
-        it.only("removeOperator(): check if after removing operator all whitelist users also not in whitelist too", async () => 
+        it("removeOperator(): check if after removing operator all whitelist users also not in whitelist too", async () => 
         {
-            await sales.addOperator(accounts[1]);
-
-            await sales.addWLInvestor(accounts[2], {from: accounts[1]});
-            await sales.addWLInvestor(accounts[3], {from: accounts[1]});
-            await sales.addWLInvestor(accounts[4], {from: accounts[1]});
-
-            await sales.addWLInvestor(accounts[5]);
-            await sales.addWLInvestor(accounts[6]);
-            await sales.addWLInvestor(accounts[7]);
-            
-            
             let wholeCountBefore = await sales.getRoleCount(roles.WL_INVESTOR);
             let rolesBefore = await sales.addedByOperator(accounts[1])
             
