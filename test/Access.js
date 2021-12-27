@@ -89,7 +89,7 @@ contract("Access", function(accounts)
             let rolesBefore = await access.addedByOperator(accounts[1])
             
             console.log(`\tWhole count before is: ${wholeCountBefore.toNumber()}`)
-            console.log(`\tCount before is: ${rolesBefore.toNumber()}`)
+            console.log(`\tOperator's count before is: ${rolesBefore.toNumber()}`)
             
             await access.removeOperator(accounts[1])
 

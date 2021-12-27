@@ -42,4 +42,9 @@ contract Sales is Access, ISales
     _max = new_max;
   }
 
+
+  function investOnBehalf(uint256 amount) public view returns(uint256)
+  {
+    // operator must initialise transaction
+  }
 }

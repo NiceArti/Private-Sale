@@ -2,7 +2,7 @@ const truffleAssert = require('truffle-assertions');
 const Uniswap = artifacts.require("Uniswap");
 const Token = artifacts.require("Token");
 
-contract.only("Uniswap", function(accounts)
+contract.skip("Uniswap", function(accounts)
 {
 
     let uniswap;

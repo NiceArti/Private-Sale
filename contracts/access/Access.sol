@@ -21,7 +21,7 @@ contract Access is Context, AccessControlEnumerable, Pausable, IAccess
   bytes32 public constant ADMIN = 'admin';
   bytes32 public constant OPERATOR = 'operator';
   bytes32 public constant WL_INVESTOR = 'wl_investor';
-  bytes32 public constant NON_WL_INVESTOR = 'non_wl_investor';
+  // bytes32 public constant NON_WL_INVESTOR = 'non_wl_investor';
 
   constructor()
   {
