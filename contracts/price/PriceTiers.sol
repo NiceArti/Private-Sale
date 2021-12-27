@@ -2,15 +2,14 @@
 pragma solidity ^0.8.0;
 
 import "../access/Access.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 abstract contract PriceTiers is Access
 {
     address internal _A;
-    address internal _B;
-
+    IERC20 _MT;
     uint256 internal _amountA;
-    uint256 internal _amountB;
-    uint256 internal _discount = 1;
+    uint256 internal _discount;
 
-    function price(address A, address B, uint256 amountA, uint256 amountB) external view virtual returns(uint256);
+    function price(address A, uint256 amountA) external virtual returns(uint256);
 }

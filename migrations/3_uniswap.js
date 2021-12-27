@@ -8,5 +8,4 @@ module.exports = function (deployer)
 
     // Tokens
     deployer.deploy(Token, "Ethereum", "ETH");
-
 };
