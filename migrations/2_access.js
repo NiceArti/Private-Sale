@@ -1,5 +1,5 @@
-const Access = artifacts.require("Access");
+const AccessTest = artifacts.require("AccessTest");
 
 module.exports = function (deployer) {
-  deployer.deploy(Access);
+  deployer.deploy(AccessTest);
 };

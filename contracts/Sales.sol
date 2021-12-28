@@ -9,22 +9,52 @@ contract Sales is Access, ISales
 {
   uint256 private _min = 10;
   uint256 private _max = 100;
+  uint256 public _amount;
 
-  IERC20 public _tokenContract;  // the token being sold
-  uint256 public _amount;         // the price, in dollars, per token
+  uint256 public _userAmount = 0;
 
-  address owner;
+  address public token_;
 
 
   constructor()
   {
     _grantRole(ADMIN, _msgSender());
-    owner = _msgSender();
+  }
+
+  function init(address token, uint256 amount) public
+  {
+    require(token != address(0), "Sales: zero address");
+    IERC20 tokenContract = IERC20(token);
+
+    tokenContract.transferFrom(_msgSender(), address(this), amount);
+    _amount = tokenContract.balanceOf(address(this));
+  }
+
+  function buy(address token, uint256 amount) public
+  {
+    require(token != address(0), "Sales: zero address");
+    require(
+      super.hasRole(OPERATOR, super._msgSender()) ||
+      super.hasRole(ADMIN, super._msgSender())    ||
+      super.hasRole(WL_INVESTOR, super._msgSender()),
+      "Sales: user has no access rights to participate here"
+    );
+    IERC20 tokenContract = IERC20(token);
+
+    require(_amount > 0, "Sales: sale is ended");
+    require(amount >= _min || amount <= _max, "Sales: amount is not in diapason");
+
+    
+    if((_userAmount + amount) > _max)
+      revert("Sales: your amount is overflow");
+
+    _userAmount += amount;
+    
+    tokenContract.approve(address(this), amount);
+    tokenContract.transferFrom(address(this), _msgSender(), amount);
   }
   
 
-  //tokenContract.transferFrom(_msgSender(), address(this), amount);
-  //_amount = _tokenContract;
  
   // just getters
   // they are needed not everyone to change min and max parameters
@@ -59,13 +89,14 @@ contract Sales is Access, ISales
   }
 
 
-  function endSale() public view
+  function endSale(address token) onlyRole(ADMIN) public
   {
-    require(super.hasRole(ADMIN, _msgSender()), "Sales: You have no rights to end sale");
+    IERC20 tokenContract = IERC20(token);
+    _amount = tokenContract.balanceOf(address(this));
 
-    // Send unsold tokens to the owner.
-    // require(_tokenContract.transfer(owner, _tokenContract.balanceOf(address(this))));
-
-    //_msgSender().transfer(address(this).balance);
+    require(_amount > 0, "Sales: sale is ended");
+    
+    tokenContract.approve(address(this), _amount);
+    tokenContract.transferFrom(address(this), _msgSender(), _amount);
   }
 }

@@ -1,5 +1,5 @@
 const truffleAssert = require('truffle-assertions');
-const Access = artifacts.require("Access");
+const Access = artifacts.require("AccessTest");
 
 contract("Access", function(accounts)
 {
@@ -8,7 +8,6 @@ contract("Access", function(accounts)
         ADMIN:"admin",
         OPERATOR:"operator",
         WL_INVESTOR:"wl_investor",
-        NON_WL_INVESTOR:"not_wl_investor"
     }
 
     let access;
