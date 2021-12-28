@@ -6,9 +6,9 @@ import "@openzeppelin/contracts/access/AccessControlEnumerable.sol";
 import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import "../utils/Helpers.sol";
-import "../interfaces/IAccess.sol";
+import "./IAccess.sol";
 
-contract Access is Context, AccessControlEnumerable, Pausable, IAccess
+abstract contract Access is Context, AccessControlEnumerable, Pausable, IAccess
 {
   using EnumerableSet for EnumerableSet.AddressSet;
   using Helpers for string;
@@ -21,12 +21,7 @@ contract Access is Context, AccessControlEnumerable, Pausable, IAccess
   bytes32 public constant ADMIN = 'admin';
   bytes32 public constant OPERATOR = 'operator';
   bytes32 public constant WL_INVESTOR = 'wl_investor';
-  // bytes32 public constant NON_WL_INVESTOR = 'non_wl_investor';
 
-  constructor()
-  {
-    _grantRole(ADMIN, _msgSender());
-  }
   
   function checkRole(string memory _role, address account) public override view returns (bool)
   {
