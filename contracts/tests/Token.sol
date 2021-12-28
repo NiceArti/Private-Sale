@@ -7,6 +7,6 @@ contract Token is ERC20
 {
     constructor(string memory name, string memory symbol) ERC20(name, symbol)
     {
-        _mint(_msgSender(), 10**6); // mint 1mln tokens
+        _mint(_msgSender(), 10**6 * 10**18); // mint 1mln tokens
     }
 }

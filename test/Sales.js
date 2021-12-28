@@ -3,7 +3,7 @@ const Sales = artifacts.require("Sales");
 const Token = artifacts.require("Token");
 
 
-contract("Sales", function(accounts)
+contract.only("Sales", function(accounts)
 {
     const roles = 
     {
@@ -13,13 +13,20 @@ contract("Sales", function(accounts)
     }
 
     let sales;
+    let usd;
+    let bnb;
+
     before(async() => 
     {
-        token = await Token.deployed(),
-        sales = await Sales.deployed(),
+        token = await Token.deployed()
         
         //deployin tokens
         usd = await Token.new("US Dollar", "USD")
+        bnb = await Token.new("Binance", "BNB")
+        sales = await Sales.new(usd.address, 20000)
+
+        await bnb.transfer(accounts[1], 200000)
+        await bnb.transfer(accounts[5], 200000)
 
         //add users to whitelist
         await sales.addOperator(accounts[1])
@@ -76,48 +83,55 @@ contract("Sales", function(accounts)
     describe("test buy()", async () =>
     {
         it("buy(): check if user can buy tokens from contract", async () => 
-        {                     
-            await usd.approve(sales.address, 20000)
-            await sales.init(usd.address, 20000)
-            await sales.buy(usd.address, 20, {from: accounts[1]})
-
+        {                   
+            await usd.approve(sales.address, 20000) 
+            await sales.startSale(20000)
+            
+            
+            await bnb.approve(sales.address, 200, {from: accounts[1]}) 
+            await sales.buy(bnb.address, 20, {from: accounts[1]})
+            
             let balance = await usd.balanceOf(accounts[1])
             
             assert.equal(balance, 20, `${balance} != ${20}`)
         })
 
         it("buy(): check if user can not buy more than max", async () => 
-        {                     
-            await truffleAssert.reverts(sales.buy(usd.address, 181, {from: accounts[1]}))
+        {
+            await bnb.approve(sales.address, 181, {from: accounts[1]})
+            await truffleAssert.reverts(sales.buy(bnb.address, 181, {from: accounts[1]}))
         })
 
         it("buy(): check if other user can buy", async () => 
-        {                     
-            await sales.buy(usd.address, 20, {from: accounts[5]})
-            let balance = await usd.balanceOf(accounts[5])       
+        {               
+            await bnb.approve(sales.address, 181, {from: accounts[5]})        
+            await sales.buy(bnb.address, 20, {from: accounts[5]})
+            let balance = await usd.balanceOf(accounts[5])
             assert.equal(balance, 20, `${balance} != ${20}`)
         })
 
         it("buy(): check if user can not buy if his operator was deleted", async () => 
         {                     
-            await sales.removeOperator(accounts[1])      
-            await truffleAssert.reverts(sales.buy(usd.address, 20, {from: accounts[5]}))
+            await sales.removeOperator(accounts[1])
+            await bnb.approve(sales.address, 181, {from: accounts[1]})     
+            await truffleAssert.reverts(sales.buy(bnb.address, 20, {from: accounts[5]}))
         })
 
         it("endSale(): check if after end sale noone can buy anything", async () => 
         {                     
-            await sales.endSale(usd.address)
-            await truffleAssert.reverts(sales.buy(usd.address, 200, {from: accounts[1]}))
+            await sales.endSale()
+            await bnb.approve(sales.address, 200, {from: accounts[1]})  
+            await truffleAssert.reverts(sales.buy(bnb.address, 200, {from: accounts[1]}))
         })
 
         it("endSale(): check if sale can be ended once", async () => 
         {                     
-            await truffleAssert.reverts(sales.endSale(usd.address), "Sales: sale is ended")
+            await truffleAssert.reverts(sales.endSale(), "Sales: sale is ended")
         })
 
         it("endSale(): check if only admin can terminate sale", async () => 
         {                     
-            await truffleAssert.reverts(sales.endSale(usd.address, {from: accounts[1]}))
+            await truffleAssert.reverts(sales.endSale({from: accounts[1]}))
         })
 
 

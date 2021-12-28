@@ -13,48 +13,65 @@ contract Sales is Access, ISales
 
   uint256 public _userAmount = 0;
 
-  address public token_;
+  IERC20 private _tokenContract;
 
-
-  constructor()
+  constructor(address token, uint256 amount)
   {
     _grantRole(ADMIN, _msgSender());
+    _tokenContract = IERC20(token);
+    _amount = amount;
   }
 
-  function init(address token, uint256 amount) public
+  function startSale(uint256 amount) public
   {
-    require(token != address(0), "Sales: zero address");
-    IERC20 tokenContract = IERC20(token);
-
-    tokenContract.transferFrom(_msgSender(), address(this), amount);
-    _amount = tokenContract.balanceOf(address(this));
+    _tokenContract.transferFrom(_msgSender(), address(this), amount);
+    _amount = _tokenContract.balanceOf(address(this));
   }
 
   function buy(address token, uint256 amount) public
   {
-    require(token != address(0), "Sales: zero address");
     require(
       super.hasRole(OPERATOR, super._msgSender()) ||
       super.hasRole(ADMIN, super._msgSender())    ||
       super.hasRole(WL_INVESTOR, super._msgSender()),
       "Sales: user has no access rights to participate here"
     );
-    IERC20 tokenContract = IERC20(token);
+    require(_amount > 0, "Sales: sale is ended");
+    require(amount >= _min || amount <= _max, "Sales: amount is not in diapason");
+ 
+    if((_userAmount + amount) > _max && !hasRole(ADMIN,_msgSender()))
+      revert("Sales: your amount is overflow");
 
+    _userAmount += amount;
+
+
+    IERC20 tokenContractClient = IERC20(token);
+    
+    tokenContractClient.transferFrom(_msgSender(), address(this), amount);
+
+    _tokenContract.transfer(_msgSender(), amount);
+  }
+
+
+  // buy tokens using ETH
+  function buyETH(uint256 amount) public payable
+  {
+    require(
+      super.hasRole(OPERATOR, super._msgSender()) ||
+      super.hasRole(ADMIN, super._msgSender())    ||
+      super.hasRole(WL_INVESTOR, super._msgSender()),
+      "Sales: user has no access rights to participate here"
+    );
     require(_amount > 0, "Sales: sale is ended");
     require(amount >= _min || amount <= _max, "Sales: amount is not in diapason");
 
-    
-    if((_userAmount + amount) > _max)
+    if((_userAmount + amount) > _max && !hasRole(ADMIN,_msgSender()))
       revert("Sales: your amount is overflow");
 
     _userAmount += amount;
     
-    tokenContract.approve(address(this), amount);
-    tokenContract.transferFrom(address(this), _msgSender(), amount);
+    _tokenContract.transfer(_msgSender(), amount);
   }
-  
-
  
   // just getters
   // they are needed not everyone to change min and max parameters
@@ -89,14 +106,10 @@ contract Sales is Access, ISales
   }
 
 
-  function endSale(address token) onlyRole(ADMIN) public
+  function endSale() onlyRole(ADMIN) public
   {
-    IERC20 tokenContract = IERC20(token);
-    _amount = tokenContract.balanceOf(address(this));
-
+    _amount = _tokenContract.balanceOf(address(this));
     require(_amount > 0, "Sales: sale is ended");
-    
-    tokenContract.approve(address(this), _amount);
-    tokenContract.transferFrom(address(this), _msgSender(), _amount);
+    _tokenContract.transfer(_msgSender(), _amount);
   }
 }
