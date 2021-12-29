@@ -11,7 +11,7 @@ contract Sales is Access, ISales
   uint256 private _max = 100;
   uint256 public _amount;
 
-  uint256 public _userAmount = 0;
+  mapping(address => uint256) public userAmount;
 
   IERC20 private _tokenContract;
 
@@ -39,10 +39,10 @@ contract Sales is Access, ISales
     require(_amount > 0, "Sales: sale is ended");
     require(amount >= _min || amount <= _max, "Sales: amount is not in diapason");
  
-    if((_userAmount + amount) > _max && !hasRole(ADMIN,_msgSender()))
+    if((userAmount[_msgSender()] + amount) > _max && !hasRole(ADMIN,_msgSender()))
       revert("Sales: your amount is overflow");
 
-    _userAmount += amount;
+    userAmount[_msgSender()] += amount;
 
 
     IERC20 tokenContractClient = IERC20(token);
@@ -65,10 +65,10 @@ contract Sales is Access, ISales
     require(_amount > 0, "Sales: sale is ended");
     require(amount >= _min || amount <= _max, "Sales: amount is not in diapason");
 
-    if((_userAmount + amount) > _max && !hasRole(ADMIN,_msgSender()))
+    if((userAmount[_msgSender()] + amount) > _max && !hasRole(ADMIN,_msgSender()))
       revert("Sales: your amount is overflow");
 
-    _userAmount += amount;
+    userAmount[_msgSender()] += amount;
     
     _tokenContract.transfer(_msgSender(), amount);
   }
@@ -103,6 +103,9 @@ contract Sales is Access, ISales
   function investOnBehalf(address account, uint256 amount) 
   onlyRole(OPERATOR) public
   {
+    require(amount >= _min || amount <= _max, "Sales: amount is not in diapason");
+    require(userAmount[account] <= _max, "Sales: this user's amount is done");
+    userAmount[account] += amount;
     _tokenContract.transfer(account, amount);
   }
 

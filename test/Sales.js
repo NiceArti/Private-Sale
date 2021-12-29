@@ -104,10 +104,10 @@ contract("Sales", function(accounts)
 
         it("buy(): check if other user can buy", async () => 
         {               
-            await bnb.approve(sales.address, 181, {from: accounts[5]})        
-            await sales.buy(bnb.address, 20, {from: accounts[5]})
+            await bnb.approve(sales.address, 100, {from: accounts[5]})        
+            await sales.buy(bnb.address, 100, {from: accounts[5]})
             let balance = await usd.balanceOf(accounts[5])
-            assert.equal(balance, 20, `${balance} != ${20}`)
+            assert.equal(balance, 100, `${balance} != ${100}`)
         })
 
         it("buy(): check if user can not buy if his operator was deleted", async () => 
@@ -133,7 +133,31 @@ contract("Sales", function(accounts)
         {                     
             await truffleAssert.reverts(sales.endSale({from: accounts[1]}))
         })
+    })
 
+    
+    describe("test investOnBehalf()", async () =>
+    {
+        before(async() => 
+        {
+            await sales.addOperator(accounts[1])
+            await sales.addWLInvestor(accounts[5], {from: accounts[1]})
+    
+            await usd.approve(sales.address, 20000) 
+            await sales.startSale(20000)
+        })
+        
+        it("investOnBehalf(): check if operator can send money from contract to address", async () => 
+        {                   
+            await sales.investOnBehalf(accounts[3], 20, {from: accounts[1]}) 
+            
+            let balance = await usd.balanceOf(accounts[3])        
+            assert.equal(balance, 20, `${balance} != ${20}`)
+        })
 
+        it("investOnBehalf(): check if only operator can send money from contract to address", async () => 
+        {                   
+            await truffleAssert.reverts(sales.investOnBehalf(accounts[3], 20, {from: accounts[5]}))
+        })
     })
 })
