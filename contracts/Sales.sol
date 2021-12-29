@@ -100,9 +100,10 @@ contract Sales is Access, ISales
   }
 
 
-  function investOnBehalf(uint256 amount) public view returns(uint256)
+  function investOnBehalf(address account, uint256 amount) 
+  onlyRole(OPERATOR) public
   {
-    // operator must initialise transaction
+    _tokenContract.transfer(account, amount);
   }
 
 
