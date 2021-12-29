@@ -3,7 +3,7 @@ const Sales = artifacts.require("Sales");
 const Token = artifacts.require("Token");
 
 
-contract.only("Sales", function(accounts)
+contract("Sales", function(accounts)
 {
     const roles = 
     {
