@@ -11,7 +11,7 @@ contract Sales is Access, ISales
   uint256 private _max = 100;
   uint256 public _amount;
 
-  mapping(address => uint256) public userAmount;
+  mapping(address => uint256) internal _userAmount;
 
   IERC20 private _tokenContract;
 
@@ -37,12 +37,12 @@ contract Sales is Access, ISales
       "Sales: user has no access rights to participate here"
     );
     require(_amount > 0, "Sales: sale is ended");
-    require(amount >= _min || amount <= _max, "Sales: amount is not in diapason");
+    require(amount >= _min && amount <= _max, "Sales: amount is not in diapason");
  
-    if((userAmount[_msgSender()] + amount) > _max && !hasRole(ADMIN,_msgSender()))
+    if((_userAmount[_msgSender()] + amount) > _max && !hasRole(ADMIN,_msgSender()))
       revert("Sales: your amount is overflow");
 
-    userAmount[_msgSender()] += amount;
+    _userAmount[_msgSender()] += amount;
 
 
     IERC20 tokenContractClient = IERC20(token);
@@ -63,14 +63,15 @@ contract Sales is Access, ISales
       "Sales: user has no access rights to participate here"
     );
     require(_amount > 0, "Sales: sale is ended");
-    require(amount >= _min || amount <= _max, "Sales: amount is not in diapason");
+    require(amount >= _min && amount <= _max, "Sales: amount is not in diapason");
+    require(msg.value == amount, "Sales: try different amount"); 
 
-    if((userAmount[_msgSender()] + amount) > _max && !hasRole(ADMIN,_msgSender()))
+    if((_userAmount[_msgSender()] + amount) > _max && !hasRole(ADMIN,_msgSender()))
       revert("Sales: your amount is overflow");
 
-    userAmount[_msgSender()] += amount;
+    _userAmount[_msgSender()] += amount;
     
-    _tokenContract.transfer(_msgSender(), amount);
+    _tokenContract.transfer(_msgSender(), msg.value);
   }
  
   // just getters
@@ -104,8 +105,8 @@ contract Sales is Access, ISales
   onlyRole(OPERATOR) public
   {
     require(amount >= _min || amount <= _max, "Sales: amount is not in diapason");
-    require(userAmount[account] <= _max, "Sales: this user's amount is done");
-    userAmount[account] += amount;
+    require(_userAmount[account] <= _max, "Sales: this user's amount is done");
+    _userAmount[account] += amount;
     _tokenContract.transfer(account, amount);
   }
 
