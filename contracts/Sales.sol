@@ -104,20 +104,20 @@ contract Sales is Access, ISales
   // working on dynamic price
   function price() public view returns(uint256)
   {
-    uint256 currentPrice = _price * _tokenContract.balanceOf(address(this)) * discount;
+    uint256 currentPrice;
 
     // change time by timeframe (hard price)
     if(_tactic == Tactic.TimeFrame)
     {
       if(block.timestamp >= timeFrame)
       {
-        currentPrice = _price * _tokenContract.balanceOf(address(this)) * discount;
+        currentPrice *= _price * _tokenContract.balanceOf(address(this)) * discount;
       }
     }
     // change time by amount (hard price)
     else
     {
-      currentPrice = _price * _tokenContract.balanceOf(address(this)) * discount;
+      currentPrice *= _price * _tokenContract.balanceOf(address(this)) * discount;
     }
     
     return currentPrice;
