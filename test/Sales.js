@@ -6,7 +6,7 @@ const Token = artifacts.require("Token");
 
 //const toWei = (value) => ethers.utils.parseEther(value.toString());
 
-contract("Sales", function(accounts)
+contract.only("Sales", function(accounts)
 {
     const roles = 
     {
@@ -74,6 +74,9 @@ contract("Sales", function(accounts)
     const startAmount = 20000
     let userBuy = max - 50
 
+    let startDate = parseInt(Date.now() / 1000)
+    let endDate = parseInt(startDate + 10000000000)
+
     before(async() => 
     {
         token = await Token.deployed()
@@ -83,7 +86,10 @@ contract("Sales", function(accounts)
         bnb = await Token.new("Binance", "BNB")
 
         // deploy sale with default parameters
-        sales = await Sales.new(usd.address, startAmount)
+        //(address token, uint256 price_, uint256 amount, uint256 start, uint256 end, Tactic tactic)
+        console.log(startDate +" "+ endDate)
+
+        sales = await Sales.new(usd.address, 10, startAmount, startDate, endDate, 0)
 
         // transfer bnb tokens to test contract
         await bnb.transfer(accounts[1], 200000)
@@ -92,9 +98,9 @@ contract("Sales", function(accounts)
         //add users to whitelist
         await sales.addOperator(accounts[1])
         await sales.addWLInvestor(accounts[5], {from: accounts[1]})
-        
+
         // create private sale with usd token, amount - 20000
-        await usd.approve(sales.address, startAmount) 
+        await usd.approve(sales.address, startAmount)
         await sales.startSale(startAmount)
     })
     
@@ -141,8 +147,24 @@ contract("Sales", function(accounts)
         })
     })
 
+    describe("test buy() by timestamp: ", async () =>
+    {
+        it("buy(): check if user can not buy tokens if sale is ended", async () => 
+        {     
+            await sales.setEndDate(startDate)
+            await bnb.approve(sales.address, userBuy, {from: accounts[1]}) 
+            await truffleAssert.reverts(sales.buy(bnb.address, userBuy, {from: accounts[1]}))
+        })
 
-    
+        it("buy(): check if user can not buy tokens before sale is started", async () => 
+        {   
+            await sales.setEndDate(startDate + 10000)
+            await sales.setStartDate(startDate + 1000)
+            await bnb.approve(sales.address, userBuy, {from: accounts[1]}) 
+            await truffleAssert.reverts(sales.buy(bnb.address, userBuy, {from: accounts[1]}))
+        })
+    })
+
     describe("test endSale()", async () =>
     {
         before(async() => { await sales.endSale() })
@@ -163,7 +185,6 @@ contract("Sales", function(accounts)
             await truffleAssert.reverts(sales.endSale({from: accounts[1]}))
         })
     })
-
     
     describe("test investOnBehalf()", async () =>
     {
@@ -171,7 +192,11 @@ contract("Sales", function(accounts)
         {
             await sales.addOperator(accounts[1])
             await sales.addWLInvestor(accounts[5], {from: accounts[1]})
-    
+            
+            //set time to start
+            await sales.setEndDate(startDate + 10000)
+            await sales.setStartDate(startDate)
+
             await usd.approve(sales.address, 20000) 
             await sales.startSale(20000)
         })
@@ -190,11 +215,14 @@ contract("Sales", function(accounts)
         })
     })
 
-
     describe("test buyETH()", async () =>
     {
         before(async() => 
         {
+            //set time to start
+            await sales.setEndDate(startDate + 10000)
+            await sales.setStartDate(startDate)
+
             await usd.approve(sales.address, 20000) 
             await sales.startSale(20000)
             await sales.addWLInvestor(accounts[2], {from: accounts[1]})
@@ -221,6 +249,41 @@ contract("Sales", function(accounts)
         it("buyETH(): check if user cannot buy less than min amount allowed", async () => 
         {
             await truffleAssert.reverts(sales.buyETH(min - 10, {from: accounts[3], value: min - 10}))
+        })
+    })
+
+
+    describe("test price()", async () =>
+    {
+        it("price(): check if user can buy tokens from contract", async () => 
+        {
+            let pr = await sales.price();
+            assert.equal(10, 10, `${10} != ${10}`)
+        })
+    })
+
+    describe("test expected()", async () =>
+    {
+        it("expected(): check if user can buy tokens from contract", async () => 
+        {
+            let pr = await sales.expected(200, 15);
+            assert.equal(300, pr, `${pr} != ${300}`)
+        })
+    })
+
+    describe("test return non kyced investors", async () =>
+    {
+        before(async() => 
+        {
+            await bnb.transfer(accounts[4], 200)
+        })
+        it("returnTokens(): check if user non kyced user can get usdt back", async () => 
+        {
+            await bnb.approve(sales.address, 200, {from: accounts[4]})
+            await sales.returnTokens(bnb.address, {from: accounts[4]})
+            let balance = await usd.balanceOf(accounts[4]);
+
+            assert.equal(balance, 200, `${balance} != ${200}`)
         })
     })
 })
