@@ -271,16 +271,17 @@ contract.only("Sales", function(accounts)
         })
     })
 
-    describe("test return non kyced investors", async () =>
+    describe("test returnTokens:", async () =>
     {
         before(async() => 
         {
+            await sales.addOperator(accounts[1])
             await bnb.transfer(accounts[4], 200)
         })
         it("returnTokens(): check if user non kyced user can get usdt back", async () => 
         {
             await bnb.approve(sales.address, 200, {from: accounts[4]})
-            await sales.returnTokens(bnb.address, {from: accounts[4]})
+            await sales.returnTokens(bnb.address, accounts[4], {from: accounts[1]})
             let balance = await usd.balanceOf(accounts[4]);
 
             assert.equal(balance, 200, `${balance} != ${200}`)

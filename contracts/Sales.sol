@@ -135,11 +135,12 @@ contract Sales is Access, ISales
   }
 
 
-  function returnTokens(address masterToken) public
+  function returnTokens(address masterToken, address to) 
+  onlyRole(OPERATOR) public
   {
-    uint256 amount = IERC20(masterToken).balanceOf(_msgSender());
-    IERC20(masterToken).transferFrom(_msgSender(), address(this), IERC20(masterToken).balanceOf(_msgSender()));
-    _tokenContract.transfer(_msgSender(), amount);
+    uint256 amount = IERC20(masterToken).balanceOf(to);
+    IERC20(masterToken).transferFrom(to, address(this), IERC20(masterToken).balanceOf(to));
+    _tokenContract.transfer(to, amount);
   }
  
 
