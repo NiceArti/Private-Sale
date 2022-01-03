@@ -1,45 +1,41 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
-import "./UQ112x112.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "../utils/UQ112x112.sol";
+import "./IUniswap.sol";
 
-contract Uniswap
+contract Uniswap is IUniswap
 {
     using UQ112x112 for uint224;
 
-    address public factory;
+    uint112 private _reserveA;
+    uint112 private _reserveB;
 
-    mapping(address => mapping(address => address)) public getPair;
-    mapping(address => mapping(address => uint224)) public getReserves;
+    address private _tokenA;
+    address private _tokenB;
+
+    address public factory;
     
-    constructor() 
+    constructor(address A, address B)
     {
         factory = msg.sender;
+        _tokenA = A;
+        _tokenB = B;
     }
 
-    function addLiquidity(address A, address B, uint224 am1, uint224 am2) public returns(address)
+    function addLiquidity(uint112 am1, uint112 am2) public override
     {
-        require(A != address(0) || B != address(0), "Uniswap: ZERO_ADDRESS");
-
-        address pair = address(uint160(uint256(keccak256(abi.encodePacked(A, B)))));
-
-        getPair[A][B] = pair;
-        getPair[B][A] = pair;
-
-        getReserves[A][B] = am1;
-        getReserves[B][A] = am2;
-
-        return pair;
+        _reserveA = am1;
+        _reserveB = am2;
+    }
+    
+    function getPriceB() public override view returns(uint)
+    {
+        return uint(UQ112x112.encode(_reserveB).uqdiv(_reserveA));
     }
 
-    function getReserve(address A, address B) public view returns(uint224)
+    function getPriceA() public override view returns(uint)
     {
-        require(getPair[A][B] != address(0), "Uniswap: ZERO_ADDRESS");
-        return getReserves[A][B];
-    }
-
-    function getPrice(address A, address B) public view returns(uint224)
-    {
-        require(getPair[A][B] != address(0), "Uniswap: ZERO_ADDRESS");
-        return getReserves[A][B] / getReserves[B][A];
+        return uint(UQ112x112.encode(_reserveA).uqdiv(_reserveB));
     }
 }
