@@ -7,6 +7,6 @@ contract AccessTest is Access
 {
     constructor()
     {
-        _grantRole(ADMIN, _msgSender());
+        _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     }
 }

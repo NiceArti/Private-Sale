@@ -5,26 +5,14 @@ contract("Access", function(accounts)
 {
     const roles = 
     {
-        ADMIN:"admin",
-        OPERATOR:"operator",
-        WL_INVESTOR:"wl_investor",
+        ADMIN:web3.utils.hexToAscii("0x00"),
+        OPERATOR:web3.utils.sha3('operator'),
+        WL_INVESTOR:web3.utils.sha3('wl_investor'),
     }
+
 
     let access;
     before(async() => access = await Access.deployed())
-
-    it("checkRole(): must return true to admin role to deployer", async () =>
-    {
-        let role = await access.checkRole(roles.ADMIN, accounts[0])
-        assert.equal(role, true, `${role} != ${true}`)
-    });
-
-    it("checkRole(): must return false if asks role admin, operator...", async () =>
-    {
-        let role = await access.checkRole(roles.ADMIN, accounts[1])
-        assert.equal(role, false, `${role} != ${false}`)
-    });
-
 
 
     describe("test roles", async () =>
@@ -32,7 +20,7 @@ contract("Access", function(accounts)
         it("addOperator(): check if admin can add operator", async () => 
         {
             await access.addOperator(accounts[1])
-            let role = await access.checkRole(roles.OPERATOR, accounts[1])
+            let role = await access.hasRole(roles.OPERATOR, accounts[1])
             assert.equal(role, true, `${role} != ${true}`)
         })
 
@@ -51,14 +39,14 @@ contract("Access", function(accounts)
         it("addWlInvestor(): check if admin can add whitelist investor", async () => 
         {
             await access.addWLInvestor(accounts[2], {from: accounts[1]});
-            let role = await access.checkRole(roles.WL_INVESTOR, accounts[2])
+            let role = await access.hasRole(roles.WL_INVESTOR, accounts[2])
             assert.equal(role, true, `${role} != ${true}`)
         })
 
         it("removeWLInvestor(): check if admin can add whitelist investor", async () => 
         {
             await access.removeWLInvestor(accounts[2], {from: accounts[1]});
-            let role = await access.checkRole(roles.WL_INVESTOR, accounts[2])
+            let role = await access.hasRole(roles.WL_INVESTOR, accounts[2])
             assert.equal(role, false, `${role} != ${true}`)
         })
 
@@ -75,7 +63,7 @@ contract("Access", function(accounts)
 
             let countOp = await access.addedByOperator(accounts[1])
             
-            let wholeCount = await access.getRoleCount(roles.WL_INVESTOR);
+            let wholeCount = await access.getRoleMemberCount(roles.WL_INVESTOR);
             console.log(`\tWhole count is: ${wholeCount.toNumber()}`)
             console.log(`\tOperator count is: ${countOp.toNumber()}`)
 
@@ -84,7 +72,15 @@ contract("Access", function(accounts)
 
         it("removeOperator(): check if after removing operator all whitelist users also not in whitelist too", async () => 
         {
-            let wholeCountBefore = await access.getRoleCount(roles.WL_INVESTOR);
+            await access.addWLInvestor(accounts[5]);
+            await access.addWLInvestor(accounts[6]);
+            await access.addWLInvestor(accounts[7]);
+
+            await access.addWLInvestor(accounts[2], {from: accounts[1]});
+            await access.addWLInvestor(accounts[3], {from: accounts[1]});
+            await access.addWLInvestor(accounts[4], {from: accounts[1]});
+
+            let wholeCountBefore = await access.getRoleMemberCount(roles.WL_INVESTOR);
             let rolesBefore = await access.addedByOperator(accounts[1])
             
             console.log(`\tWhole count before is: ${wholeCountBefore.toNumber()}`)
@@ -92,7 +88,7 @@ contract("Access", function(accounts)
             
             await access.removeOperator(accounts[1])
 
-            let wholeCountAfter = await access.getRoleCount(roles.WL_INVESTOR)
+            let wholeCountAfter = await access.getRoleMemberCount(roles.WL_INVESTOR)
             console.log(`\tWhole count after is: ${wholeCountAfter.toNumber()}`)
 
             
