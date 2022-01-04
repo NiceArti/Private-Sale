@@ -8,12 +8,10 @@ import "./utils/UQ112x112.sol";
 
 contract Sales is Access, ISales
 {
-  using UQ112x112 for uint224;
-
   enum Tactic {TimeFrame, Amount}
   Tactic private _tactic;
 
-  uint112 private _price;
+  uint256 private _price;
   uint256 public timeFrame = 10;
   uint256 public constant discount = 1;
 
@@ -21,17 +19,18 @@ contract Sales is Access, ISales
   uint256 private _end;
 
 
-  uint112 private _min = 10;
-  uint112 private _max = 100;
+  uint256 private _min = 10;
+  uint256 private _max = 100;
+  uint256 public _balance;
   uint256 public _amount;
 
   mapping(address => uint256) internal _userAmount;
 
   IERC20 private _tokenContract;
 
-  constructor(address token, uint112 price_, uint256 amount, uint112 min, uint112 max, uint256 start, uint256 end, Tactic tactic)
+  constructor(address token, uint256 price_, uint256 amount, uint256 min, uint256 max, uint256 start, uint256 end, Tactic tactic)
   {
-    _grantRole(ADMIN, _msgSender());
+    _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     _tokenContract = IERC20(token);
     _amount = amount;
 
@@ -55,7 +54,6 @@ contract Sales is Access, ISales
     require(_start <= block.timestamp, "Sale: wait untill time starts");
     require(_end > block.timestamp, "Sale: you cannot start this sale again");
 
-
     _tokenContract.transferFrom(_msgSender(), address(this), amount);
     _amount = _tokenContract.balanceOf(address(this));
   }
@@ -64,7 +62,7 @@ contract Sales is Access, ISales
   {
     require(
       super.hasRole(OPERATOR, super._msgSender()) ||
-      super.hasRole(ADMIN, super._msgSender())    ||
+      super.hasRole(DEFAULT_ADMIN_ROLE, super._msgSender())    ||
       super.hasRole(WL_INVESTOR, super._msgSender()),
       "Sales: user has no access rights to participate here"
     );
@@ -73,46 +71,50 @@ contract Sales is Access, ISales
     require(block.timestamp >= _start, "Sales: sale is not started yet");
 
     // amount of tokens that user will get by other ERC20 token's price
-    //uint amount_ = expected(amount);
+    uint amount_ = expected(amount);
 
-    require(amount >= _min && amount <= _max, "Sales: amount is not in diapason");
+    require(amount_ >= _min && amount_ <= _max, "Sales: amount is not in diapason");
  
-    if((_userAmount[_msgSender()] + amount) > _max && !hasRole(ADMIN,_msgSender()))
+    if((_userAmount[_msgSender()] + amount_) > _max && !hasRole(DEFAULT_ADMIN_ROLE,_msgSender()))
       revert("Sales: your amount is overflow");
 
-    _userAmount[_msgSender()] += amount;
+    _userAmount[_msgSender()] += amount_;
 
     IERC20 tokenContractClient = IERC20(token);
-    tokenContractClient.transferFrom(_msgSender(), address(this), amount);
-    _tokenContract.transfer(_msgSender(), amount);
+    tokenContractClient.transferFrom(_msgSender(), address(this), amount_);
+    _tokenContract.transfer(_msgSender(), amount_);
   }
 
   // buy tokens using ETH
-  function buyETH(uint256 amount) public payable
+  function buyETH() public payable
   {
     require(
       super.hasRole(OPERATOR, super._msgSender()) ||
-      super.hasRole(ADMIN, super._msgSender())    ||
+      super.hasRole(DEFAULT_ADMIN_ROLE, super._msgSender())    ||
       super.hasRole(WL_INVESTOR, super._msgSender()),
       "Sales: user has no access rights to participate here"
     );
     require(_amount > 0, "Sales: sale is ended");
     require(block.timestamp <= _end, "Sales: sale is ended");
     require(block.timestamp >= _start, "Sales: sale is not started yet");
-    require(amount >= _min && amount <= _max, "Sales: amount is not in diapason");
-    require(msg.value == amount, "Sales: try different amount"); 
 
-    if((_userAmount[_msgSender()] + amount) > _max && !hasRole(ADMIN,_msgSender()))
+    //get amount of tokens that can be getted by ETH amount
+    uint256 amount_ = 4000 * msg.value / price();
+
+    require(amount_ >= _min, "Sales: amount is not too low");
+    require(amount_ <= _max, "Sales: amount is too high");
+
+    if((_userAmount[_msgSender()] + amount_) > _max && !hasRole(DEFAULT_ADMIN_ROLE,_msgSender()))
       revert("Sales: your amount is overflow");
 
-    _userAmount[_msgSender()] += amount;
+    _userAmount[_msgSender()] += amount_;
     
-    _tokenContract.transfer(_msgSender(), msg.value);
+    _tokenContract.transfer(_msgSender(), amount_);
   }
 
   
   // working on dynamic price
-  function price() public view returns(uint112)
+  function price() public view returns(uint256)
   {
     //uint112 currentPrice = 1;
 
@@ -140,42 +142,45 @@ contract Sales is Access, ISales
   function expected(uint112 amount) public view returns(uint)
   {
     // get current price and return expected amount
-    return uint(UQ112x112.encode(amount).uqdiv(price()));
+    return amount / price();
   }
 
 
   function returnTokens(address masterToken, address to) 
   onlyRole(OPERATOR) public
   {
-    IERC20(masterToken).transferFrom(to, address(this), IERC20(masterToken).balanceOf(to));
+    // amount of master token multiplied by it's price
+    // hardcoded 10
+    // will be changed with oracle that will set normal price
     uint256 amount = IERC20(masterToken).balanceOf(to) * 10;
+    IERC20(masterToken).transferFrom(to, address(this), IERC20(masterToken).balanceOf(to));
     _tokenContract.transfer(to, amount);
   }
  
 
   // just getters
   // they are needed not everyone to change min and max parameters
-  function getMin() public view returns(uint)
+  function getMin() public view returns(uint256)
   {
-    return uint(UQ112x112.encode(_min));
+    return _min;
   }
 
 
-  function getMax() public view returns(uint)
+  function getMax() public view returns(uint256)
   {
-    return uint(UQ112x112.encode(_max));
+    return _max;
   }
 
 
   // only admin role can modify min and max parameter
-  function setMin(uint112 new_min) onlyRole(ADMIN) external
+  function setMin(uint112 new_min) onlyRole(DEFAULT_ADMIN_ROLE) external
   {
     require(new_min <= _max, "Sales: MIN_AMOUNT is too high");
     _min = new_min;
   }
 
 
-  function setMax(uint112 new_max) onlyRole(ADMIN) external
+  function setMax(uint112 new_max) onlyRole(DEFAULT_ADMIN_ROLE) external
   {
     require(new_max >= _min, "Sales: MAX_AMOUNT is too low");
     _max = new_max;
@@ -194,7 +199,7 @@ contract Sales is Access, ISales
   }
 
 
-  function endSale() onlyRole(ADMIN) public
+  function endSale() onlyRole(DEFAULT_ADMIN_ROLE) public
   {
     _amount = _tokenContract.balanceOf(address(this));
     require(_amount > 0, "Sales: sale is ended");

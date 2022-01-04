@@ -4,7 +4,7 @@ const Sales = artifacts.require("Sales");
 const Token = artifacts.require("Token");
 
 
-contract.only("Sales", function(accounts)
+contract("Sales", function(accounts)
 {
     const roles = 
     {
@@ -15,30 +15,14 @@ contract.only("Sales", function(accounts)
     let min = new BigNumber('10e18'),       // 10
         max = new BigNumber('100e18');      // 100
 
-    // decode encoded values of uniswap
-    // it's needed to return number with 
-    // fixed point value
-    let decode = (num) =>
-    {
-        return num / 2**112;
-    }
-
-
-    // adds accurency to number givven by user
-    let accurancy = (num, ac = 1, fixed = 2) =>
-    {
-        return num.toFixed(fixed) * 10**ac;
-    }
-
 
     describe("test min()", async () =>
     {
         it("setMin(): check if admin can change min amount", async () => 
         {
-            let min_before = await sales.getMin()
             await sales.setMin(min.plus('5e18'))
             let min_after = await sales.getMin()
-            assert.equal(decode(min_after), min.plus('5e18'), `before: ${decode(min_before)}, after: ${decode(min_after)}`)
+            assert.equal(min_after, min.plus('5e18').toFixed(), `before: ${min.plus('5e18').toFixed()}, after: ${min_after}`)
         })
 
         it("setMin(): check if not admin can not change min amount", async () => 
@@ -50,16 +34,6 @@ contract.only("Sales", function(accounts)
         {
             await truffleAssert.reverts(sales.setMin(min.plus('150e18'), {from: accounts[0]}));
         })
-        
-        // fixed point number
-        it("setMin(): check if user can set fixed point number", async () => 
-        {
-            let floatMin = new BigNumber('15.5e18')
-            let min_before = await sales.getMin()
-            await sales.setMin(floatMin)
-            let min_after = await sales.getMin()
-            assert.equal(decode(min_after), floatMin.toFixed(), `before: ${decode(min_before)}, after: ${decode(min_after)}`)
-        })
     })
     
     
@@ -68,11 +42,10 @@ contract.only("Sales", function(accounts)
     {
         it("setMax(): check if admin can change max amount", async () => 
         {
-            let max_before = await sales.getMax()
             await sales.setMax(max.plus('50e18'))
             let max_after = await sales.getMax()
 
-            assert.equal(decode(max_after), max.plus('50e18'), `before: ${decode(max_before)}, after: ${decode(max_after)}`)
+            assert.equal(max_after, max.plus('50e18').toFixed(), `before: ${max.plus('50e18').toFixed()}, after: ${max_after}`)
         })
 
         it("setMax(): check if not admin can not change max amount", async () => 
@@ -84,19 +57,10 @@ contract.only("Sales", function(accounts)
         {
             await truffleAssert.reverts(sales.setMax(min.minus('10e18'), {from: accounts[0]}));
         })
-
-        // fixed point number
-        it("setMax(): check if user can set fixed point number", async () => 
-        {
-            let floatMax = new BigNumber("100.5e18")
-            let max_before = await sales.getMax()
-            await sales.setMax(floatMax)
-            let max_after = await sales.getMax()
-            assert.equal(decode(max_after), floatMax.toFixed(), `before: ${decode(max_before)}, after: ${decode(max_after)}`)
-        })
     })
 
 
+    let tokenPrice;
     let sales,
         token,
         usd,
@@ -104,7 +68,7 @@ contract.only("Sales", function(accounts)
     
     // default start amount for private sale
     const startAmount = new BigNumber('20000e18')   // 20,000 tokens
-    let userBuy = max.minus('50e18')                // 100 - 50
+    let userBuy = new BigNumber('500e18')           // 100 - 50
 
     let startDate = parseInt(Date.now() / 1000)
     let endDate = parseInt(startDate + 10000000000)
@@ -119,7 +83,9 @@ contract.only("Sales", function(accounts)
         //(address token, uint256 price_, uint256 amount, uint256 start, uint256 end, Tactic tactic)
         console.log(startDate +" "+ endDate)
 
-        sales = await Sales.new(usd.address, 10, startAmount, min, max, startDate, endDate, 0)
+        tokenPrice = new BigNumber('10')
+
+        sales = await Sales.new(usd.address, tokenPrice, startAmount, min, max, startDate, endDate, 0)
 
         // transfer bnb tokens to test contract
         let transferTo = new BigNumber('200e18')
@@ -137,20 +103,20 @@ contract.only("Sales", function(accounts)
     })
     
     // check buy
-    describe.only("test buy()", async () =>
+    describe("test buy()", async () =>
     {
         it("buy(): check if user can buy tokens from contract", async () => 
-        {       
+        {
             await bnb.approve(sales.address, userBuy, {from: accounts[1]}) 
             await sales.buy(bnb.address, userBuy, {from: accounts[1]})
             let balance = await usd.balanceOf(accounts[1])
             
-            assert.equal(balance, userBuy.toFixed(), `${balance} != ${userBuy.toFixed()}`)
+            assert.equal(balance, userBuy.toFixed() / tokenPrice, `${balance} != ${userBuy.toFixed() / tokenPrice}`)
         })
 
         it("buy(): check if user can not buy more than max", async () => 
         {
-            let userBuy = max.plus('100e18');
+            let userBuy = max.plus('10e25');
             await bnb.approve(sales.address, userBuy, {from: accounts[1]})
             await truffleAssert.reverts(sales.buy(bnb.address, userBuy, {from: accounts[1]}))
         })
@@ -162,15 +128,15 @@ contract.only("Sales", function(accounts)
             await truffleAssert.reverts(sales.buy(bnb.address, userBuy, {from: accounts[1]}))
         })
 
-        it.skip("buy(): check if other user can buy", async () => 
+        it("buy(): check if other user can buy", async () => 
         {               
             await bnb.approve(sales.address, userBuy, {from: accounts[5]})        
             await sales.buy(bnb.address, userBuy, {from: accounts[5]})
             let balance = await usd.balanceOf(accounts[5])
-            assert.equal(balance, userBuy, `${balance} != ${userBuy}`)
+            assert.equal(balance, userBuy.toFixed() / tokenPrice, `expected: ${balance}\nactual: ${userBuy.toFixed() / tokenPrice}`)
         })
 
-        it.skip("buy(): check if user can not buy if his operator was deleted", async () => 
+        it("buy(): check if user can not buy if his operator was deleted", async () => 
         {                     
             await sales.removeOperator(accounts[1])
             await bnb.approve(sales.address, userBuy, {from: accounts[1]})     
@@ -228,16 +194,18 @@ contract.only("Sales", function(accounts)
             await sales.setEndDate(startDate + 10000)
             await sales.setStartDate(startDate)
 
-            await usd.approve(sales.address, 20000) 
-            await sales.startSale(20000)
+            // create private sale with usd token, amount - 20000
+            await usd.approve(sales.address, startAmount)
+            await sales.startSale(startAmount)
         })
 
         it("investOnBehalf(): check if operator can send money from contract to address", async () => 
-        {                   
-            await sales.investOnBehalf(accounts[3], 20, {from: accounts[1]}) 
+        {
+            let invest = new BigNumber('20e18')
+            await sales.investOnBehalf(accounts[3], invest, {from: accounts[1]}) 
             
             let balance = await usd.balanceOf(accounts[3])        
-            assert.equal(balance, 20, `${balance} != ${20}`)
+            assert.equal(balance, invest.toFixed(), `${balance} != ${invest.toFixed()}`)
         })
 
         it("investOnBehalf(): check if only operator can send money from contract to address", async () => 
@@ -248,38 +216,42 @@ contract.only("Sales", function(accounts)
 
     describe("test buyETH()", async () =>
     {
+        let userEth = new BigNumber('5e16')
         before(async() => 
         {
             //set time to start
             await sales.setEndDate(startDate + 10000)
             await sales.setStartDate(startDate)
 
-            await usd.approve(sales.address, 20000) 
-            await sales.startSale(20000)
+            await usd.approve(sales.address, startAmount) 
+            await sales.startSale(startAmount)
             await sales.addWLInvestor(accounts[2], {from: accounts[1]})
             await sales.addWLInvestor(accounts[3], {from: accounts[1]})
         })
 
         it("buyETH(): check if user can buy tokens from contract", async () => 
         {                   
-            await sales.buyETH(userBuy, {from: accounts[2], value: userBuy})
+            await sales.buyETH({from: accounts[2], value: userEth})
             
             let balanceETHContract = await web3.eth.getBalance(sales.address);
             let balanceContract = await usd.balanceOf(sales.address);
-            console.log(`\tETH: ${balanceETHContract}, USD: ${balanceContract}$`)
+            console.log(`\tETH: ${balanceETHContract / 10e18}, USD: ${balanceContract / 10e18}$`)
 
             let balance = await usd.balanceOf(accounts[2]);
-            assert.equal(balance, userBuy, `${balance} != ${userBuy}`)
+            let bn = new BigNumber(balance)
+            let expected = new BigNumber('20e18')
+            
+            assert.equal(bn.toFixed(), expected.toFixed(), `${bn.toFixed()} != ${expected.toFixed()}`)
         })
 
         it("buyETH(): check if user cannot buy more than max amount allowed", async () => 
         {
-            await truffleAssert.reverts(sales.buyETH(userBuy, {from: accounts[2], value: userBuy}))              
+            await truffleAssert.reverts(sales.buyETH({from: accounts[2], value: userEth.plus(1e18)}))              
         })
 
         it("buyETH(): check if user cannot buy less than min amount allowed", async () => 
         {
-            await truffleAssert.reverts(sales.buyETH(min - 10, {from: accounts[3], value: min - 10}))
+            await truffleAssert.reverts(sales.buyETH({from: accounts[3], value: min.minus(10)}))
         })
     })
 
@@ -297,25 +269,27 @@ contract.only("Sales", function(accounts)
     {
         it("expected(): check if user can buy tokens from contract", async () => 
         {
-            let pr = await sales.expected(200, 15);
-            assert.equal(300, pr, `${pr} != ${300}`)
+            let pr = await sales.expected(200);
+            assert.equal(20, pr, `${pr} != ${20}`)
         })
     })
 
     describe("test returnTokens:", async () =>
     {
+        const transferAmount = new BigNumber('200e18')
         before(async() => 
         {
+
             await sales.addOperator(accounts[1])
-            await bnb.transfer(accounts[4], 200)
+            await bnb.transfer(accounts[4], transferAmount)
         })
         it("returnTokens(): check if user non kyced user can get usdt back", async () => 
         {
-            await bnb.approve(sales.address, 200, {from: accounts[4]})
+            await bnb.approve(sales.address, transferAmount, {from: accounts[4]})
             await sales.returnTokens(bnb.address, accounts[4], {from: accounts[1]})
             let balance = await usd.balanceOf(accounts[4]);
 
-            assert.equal(balance, 200, `${balance} != ${200}`)
+            assert.equal(balance, transferAmount.multipliedBy(10).toFixed(), `${balance} != ${transferAmount.multipliedBy(10).toFixed()}`)
         })
     })
 })
