@@ -12,6 +12,8 @@ contract Sales is Access, ISales
   Tactic private _tactic;
 
   uint256 private _price;
+  uint256 private _currentPrice;
+
   uint256 public timeFrame = 10;
   uint256 public constant discount = 1;
 
@@ -23,8 +25,13 @@ contract Sales is Access, ISales
   uint256 private _max = 100;
   uint256 public _balance;
   uint256 public _amount;
+  uint256 private _spentAmount;
 
   mapping(address => uint256) internal _userAmount;
+
+  uint256[] internal _snapshoot;
+  mapping(uint256 => uint256) internal _blockBuffer;
+
 
   IERC20 private _tokenContract;
 
@@ -42,10 +49,13 @@ contract Sales is Access, ISales
 
     //set start price
     _price = price_;
+    _currentPrice = _price;
 
     // setup time
     _start = start;
     _end = end;
+
+    _spentAmount = 0;
   }
 
   function startSale(uint112 amount) public
@@ -53,6 +63,9 @@ contract Sales is Access, ISales
     require(_start < _end, "Sale: set the correct time");
     require(_start <= block.timestamp, "Sale: wait untill time starts");
     require(_end > block.timestamp, "Sale: you cannot start this sale again");
+
+    _snapshoot.push(_start);
+    _blockBuffer[_start] = _price;
 
     _tokenContract.transferFrom(_msgSender(), address(this), amount);
     _amount = _tokenContract.balanceOf(address(this));
@@ -74,16 +87,24 @@ contract Sales is Access, ISales
     uint amount_ = expected(amount);
 
     require(amount_ >= _min && amount_ <= _max, "Sales: amount is not in diapason");
- 
-    if((_userAmount[_msgSender()] + amount_) > _max && !hasRole(DEFAULT_ADMIN_ROLE,_msgSender()))
+  
+    if((_userAmount[_msgSender()] + amount_) > _max && !hasRole(DEFAULT_ADMIN_ROLE, _msgSender()))
       revert("Sales: your amount is overflow");
 
     _userAmount[_msgSender()] += amount_;
+    _spentAmount += amount_;
+
+
+    _snapshoot.push(block.timestamp);
+    _blockBuffer[block.timestamp] = price();
+    _updatePrice();
+
 
     IERC20 tokenContractClient = IERC20(token);
     tokenContractClient.transferFrom(_msgSender(), address(this), amount_);
     _tokenContract.transfer(_msgSender(), amount_);
   }
+
 
   // buy tokens using ETH
   function buyETH() public payable
@@ -112,12 +133,35 @@ contract Sales is Access, ISales
     _tokenContract.transfer(_msgSender(), amount_);
   }
 
-  
+  function priceTiersByTime(uint256 timestamp) public view returns(uint)
+  {
+    require(timestamp >= _start && timestamp <= block.timestamp, "Sales: your current time is not in time diapason");
+
+    // check if not first or last
+    if(timestamp == _start || _snapshoot[_snapshoot.length - 1] == timestamp) 
+      return _blockBuffer[timestamp];
+
+
+    // find on array of dates
+    for(uint256 i = 1; i < _snapshoot.length - 1;)
+    {
+      if(timestamp <= _snapshoot[i] && timestamp >= _snapshoot[i + 1])
+        return _blockBuffer[_snapshoot[i]];
+    }
+
+    return 0;
+  }
+
+
+  function _updatePrice() internal
+  {
+    if(_spentAmount > 0)
+      _currentPrice += 4;
+  }
+
   // working on dynamic price
   function price() public view returns(uint256)
   {
-    //uint112 currentPrice = 1;
-
     // change price by timeframe (hard price)
     if(_tactic == Tactic.TimeFrame)
     {
@@ -131,8 +175,9 @@ contract Sales is Access, ISales
     {
       //currentPrice *= _price * _tokenContract.balanceOf(address(this)) * discount;
     }
-    
-    return _price;
+
+
+    return _currentPrice;// / 100**18;
   }
 
 
