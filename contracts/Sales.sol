@@ -23,14 +23,18 @@ contract Sales is Access, ISales
 
   uint256 private _min = 10;
   uint256 private _max = 100;
-  uint256 public _balance;
-  uint256 public _amount;
+  uint256 private _balance;
+
+  uint256 private _startAmount;
+  uint256 private _amount;
   uint256 private _spentAmount;
 
   mapping(address => uint256) internal _userAmount;
 
-  uint256[] internal _snapshoot;
-  mapping(uint256 => uint256) internal _blockBuffer;
+  uint256[] internal _snapshotOfTime;
+  uint256[] internal _snapshotOfAmount;
+  mapping(uint256 => uint256) internal _priceBuffer;
+  mapping(uint256 => uint256) internal _priceBufferByAmount;
 
 
   IERC20 private _tokenContract;
@@ -40,6 +44,7 @@ contract Sales is Access, ISales
     _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     _tokenContract = IERC20(token);
     _amount = amount;
+    _startAmount = amount;
 
     _min = min;
     _max = max;
@@ -64,11 +69,9 @@ contract Sales is Access, ISales
     require(_start <= block.timestamp, "Sale: wait untill time starts");
     require(_end > block.timestamp, "Sale: you cannot start this sale again");
 
-    _snapshoot.push(_start);
-    _blockBuffer[_start] = _price;
-
     _tokenContract.transferFrom(_msgSender(), address(this), amount);
     _amount = _tokenContract.balanceOf(address(this));
+    _takeSnapshot(_start, _amount, _price);
   }
 
   function buy(address token, uint112 amount) public
@@ -95,14 +98,13 @@ contract Sales is Access, ISales
     _spentAmount += amount_;
 
 
-    _snapshoot.push(block.timestamp);
-    _blockBuffer[block.timestamp] = price();
-    _updatePrice();
-
 
     IERC20 tokenContractClient = IERC20(token);
     tokenContractClient.transferFrom(_msgSender(), address(this), amount_);
     _tokenContract.transfer(_msgSender(), amount_);
+
+    _updatePrice();
+    _takeSnapshot(block.timestamp, _tokenContract.balanceOf(address(this)), price());
   }
 
 
@@ -122,7 +124,7 @@ contract Sales is Access, ISales
     //get amount of tokens that can be getted by ETH amount
     uint256 amount_ = 4000 * msg.value / price();
 
-    require(amount_ >= _min, "Sales: amount is not too low");
+    require(amount_ >= _min, "Sales: amount is too low");
     require(amount_ <= _max, "Sales: amount is too high");
 
     if((_userAmount[_msgSender()] + amount_) > _max && !hasRole(DEFAULT_ADMIN_ROLE,_msgSender()))
@@ -130,23 +132,50 @@ contract Sales is Access, ISales
 
     _userAmount[_msgSender()] += amount_;
     
+    _updatePrice();
+    _takeSnapshot(block.timestamp, _tokenContract.balanceOf(address(this)), price());
+
+
     _tokenContract.transfer(_msgSender(), amount_);
   }
 
   function priceTiersByTime(uint256 timestamp) public view returns(uint)
   {
-    require(timestamp >= _start && timestamp <= block.timestamp, "Sales: your current time is not in time diapason");
+    require(timestamp >= _start, "Sales: your current time is less then needed");
 
     // check if not first or last
-    if(timestamp == _start || _snapshoot[_snapshoot.length - 1] == timestamp) 
-      return _blockBuffer[timestamp];
-
+    if(timestamp == _start)
+      return _priceBuffer[timestamp];
+    else if (timestamp >= _snapshotOfTime[_snapshotOfTime.length - 1])
+      return _priceBuffer[_snapshotOfTime[_snapshotOfTime.length - 1]];
 
     // find on array of dates
-    for(uint256 i = 1; i < _snapshoot.length - 1;)
+    // do not touch first and last element
+    for(uint256 i = 0; i < _snapshotOfTime.length; i++)
     {
-      if(timestamp <= _snapshoot[i] && timestamp >= _snapshoot[i + 1])
-        return _blockBuffer[_snapshoot[i]];
+      if(timestamp >= _snapshotOfTime[i] && timestamp <= _snapshotOfTime[i + 1])
+        return _priceBuffer[_snapshotOfTime[i]];
+    }
+
+    return 0;
+  }
+
+  function priceTiersByAmount(uint256 amount) public view returns(uint)
+  {
+    require(amount <= _startAmount, "Sales: your current amount is bigger then needed");
+
+    // check if not first or last
+    if(amount == _startAmount)
+      return _priceBufferByAmount[_snapshotOfAmount[0]];
+    else if (_snapshotOfAmount[_snapshotOfAmount.length - 1] >= amount)
+      return _priceBufferByAmount[_snapshotOfAmount[_snapshotOfAmount.length - 1]];
+
+    // find on array of dates
+    // do not touch first and last element
+    for(uint256 i = 0; i < _snapshotOfAmount.length; i++)
+    {
+      if(_snapshotOfAmount[i] >= amount && _snapshotOfAmount[i + 1] <= amount)
+        return _priceBufferByAmount[_snapshotOfAmount[i]];
     }
 
     return 0;
@@ -252,6 +281,18 @@ contract Sales is Access, ISales
   }
 
 
+
+  // helper
+  function _takeSnapshot(uint256 time, uint256 amount, uint256 price_) internal
+  {
+    _snapshotOfTime.push(time);
+    _snapshotOfAmount.push(amount);
+    _priceBuffer[time] = price_;
+    _priceBufferByAmount[amount] = price_;
+  }
+
+
+
   // helpers remove after testing
   function setEndDate(uint256 end) public 
   {
@@ -272,4 +313,7 @@ contract Sales is Access, ISales
   {
     return _start;
   }
+
+
+
 }

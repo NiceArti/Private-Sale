@@ -137,7 +137,8 @@ contract.only("Sales", function(accounts)
             await bnb.approve(sales.address, userBuy, {from: accounts[5]})        
             await sales.buy(bnb.address, userBuy, {from: accounts[5]})
             let balance = await usd.balanceOf(accounts[5])
-            assert.equal(balance, userBuy.toFixed() / tokenPrice, `expected: ${balance}\nactual: ${userBuy.toFixed() / tokenPrice}`)
+            
+            assert.equal(balance, userBuy.toFixed() / tokenPrice.plus(4), `expected: ${balance}\nactual: ${userBuy.toFixed() / tokenPrice.plus(4)}`)
         })
 
         it("buy(): check if user can not buy if his operator was deleted", async () => 
@@ -220,7 +221,7 @@ contract.only("Sales", function(accounts)
 
     describe("test buyETH()", async () =>
     {
-        let userEth = new BigNumber('5e16')
+        let userEth = new BigNumber('7e16')
         before(async() => 
         {
             //set time to start
@@ -243,7 +244,7 @@ contract.only("Sales", function(accounts)
 
             let balance = await usd.balanceOf(accounts[2]);
             let bn = new BigNumber(balance)
-            let expected = new BigNumber('20e18')
+            let expected = new BigNumber('15555555555555555555')
             
             assert.equal(bn.toFixed(), expected.toFixed(), `${bn.toFixed()} != ${expected.toFixed()}`)
         })
@@ -274,7 +275,7 @@ contract.only("Sales", function(accounts)
         it("expected(): check if user can buy tokens from contract", async () => 
         {
             let pr = await sales.expected(200);
-            assert.equal(20, pr, `${pr} != ${20}`)
+            assert.equal(9, pr, `${pr} != ${9}`)
         })
     })
 
@@ -297,7 +298,7 @@ contract.only("Sales", function(accounts)
     })
 
 
-    describe.only("test priceTiers()", async () =>
+    describe("test priceTiers()", async () =>
     {
         // here we will see graduation of price test
         before(async() =>
@@ -329,18 +330,37 @@ contract.only("Sales", function(accounts)
             console.log(`Current price: ${pr}$`)
         })
 
-        it("returnTokens(): timestamp", async () => 
+        it("priceTiersByTime(): must show price tiers every time of sale", async () => 
         {
-            let block = await sales.priceTiersByTime(startDate)
-            console.log(block.toNumber())
+            let price = await sales.priceTiersByTime(startDate)
+            console.log(`Start price: ${price.toNumber()}`)
 
             let timeNow = parseInt(Date.now() / 1000)
 
-            block = await sales.priceTiersByTime(timeNow)
-            console.log(block.toNumber())
+            price = await sales.priceTiersByTime(timeNow)
+            console.log(`Start price: ${price.toNumber()}`)
+            
+            let otherTime = parseInt(startDate + 7)
+            price = await sales.priceTiersByTime(otherTime)
+            console.log(`Start price: ${price.toNumber()}`)
+        })
 
-            block = await sales.priceTiersByTime(timeNow - 1)
-            console.log(block.toNumber())
+
+        it("priceTiersByAmount(): must show price tiers every time of sale", async () => 
+        {
+            let price = await sales.priceTiersByAmount(startAmount)
+            console.log(`Start price: ${price.toNumber()}`)
+            
+            let bn = new BigNumber('113492063492063492062')
+            let secondAmount = startAmount.minus(bn)
+
+            price = await sales.priceTiersByAmount(secondAmount.plus('50e18'))
+            console.log(`Start price: ${price.toNumber()}`)
+            
+
+            let otherAmount = startAmount.minus("200e18")
+            price = await sales.priceTiersByAmount(otherAmount)
+            console.log(`Start price: ${price.toNumber()}`)
         })
     })
 })
