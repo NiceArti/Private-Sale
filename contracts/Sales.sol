@@ -184,6 +184,10 @@ contract Sales is Access, ISales
 
   function _updatePrice() internal
   {
+    /// price will be updated using this formula:
+    //
+    /// price = (currentPrice + (amountTaken / currentAmount)) * discount;
+    /// where discount is in percents
     if(_spentAmount > 0)
       _currentPrice += 4;
   }
