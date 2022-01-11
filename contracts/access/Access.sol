@@ -61,7 +61,7 @@ abstract contract Access is Context, AccessControlEnumerable, Pausable
     super._grantRole(WL_INVESTOR, account);
   }
 
-
+  // remove whitelist investor
   function removeWLInvestor(address account) public
   {
     require(
@@ -85,6 +85,7 @@ abstract contract Access is Context, AccessControlEnumerable, Pausable
     super._pause();
   }
 
+  // only role admin can unpause master token
   function _unpause() internal override onlyRole(DEFAULT_ADMIN_ROLE)
   {
     super._unpause();

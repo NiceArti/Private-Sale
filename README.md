@@ -13,3 +13,10 @@
 
 
 My formula research link [here](https://docs.google.com/document/d/1-StbrViSvLMT71wDclO3THqKUlCk68AErMXJA3SZDcY/edit?usp=sharing)
+
+
+# Formulas
+
+![Price](./formulas/price.png)
+
+![Discount](./formulas/discount.png)
