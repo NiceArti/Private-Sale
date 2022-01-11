@@ -8,11 +8,7 @@ import "./utils/UQ112x112.sol";
 
 contract Sales is Access, ISales
 {
-  enum Tactic {TimeFrame, Amount}
-  Tactic private _tactic;
-
   uint256 private _price;
-  uint256 public timeFrame = 10;
   uint256 public constant discount = 1;
 
   uint256 private _start;
@@ -28,7 +24,7 @@ contract Sales is Access, ISales
 
   IERC20 private _tokenContract;
 
-  constructor(address token, uint256 price_, uint256 amount, uint256 min, uint256 max, uint256 start, uint256 end, Tactic tactic)
+  constructor(address token, uint256 price_, uint256 amount, uint256 min, uint256 max, uint256 start, uint256 end)
   {
     _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     _tokenContract = IERC20(token);
@@ -36,9 +32,6 @@ contract Sales is Access, ISales
 
     _min = min;
     _max = max;
-
-    //choosen tactic
-    _tactic = tactic;
 
     //set start price
     _price = price_;
@@ -116,22 +109,6 @@ contract Sales is Access, ISales
   // working on dynamic price
   function price() public view returns(uint256)
   {
-    //uint112 currentPrice = 1;
-
-    // change price by timeframe (hard price)
-    if(_tactic == Tactic.TimeFrame)
-    {
-      if(block.timestamp >= timeFrame)
-      {
-        //currentPrice = _tokenContract.balanceOf(address(this)) * _price * discount;
-      }
-    }
-    // change price by amount (hard price)
-    else
-    {
-      //currentPrice *= _price * _tokenContract.balanceOf(address(this)) * discount;
-    }
-    
     return _price;
   }
 
