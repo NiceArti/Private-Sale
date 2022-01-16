@@ -8,21 +8,24 @@ import "./utils/UQ112x112.sol";
 
 contract Sales is Access
 {
-  uint256 private _price;
-  uint256 private _discount = 1;
+  using UQ112x112 for uint224;
 
-  uint256 private _start;
-  uint256 private _end;
+  uint256 internal _price;
+  uint256 internal _discount = 1;
 
-  uint256 private _amountTaken = 0;
+  uint256 internal _start;
+  uint256 internal _end;
 
-  uint256 private _min;
-  uint256 private _max;
-  uint256 private _balance;
+  uint256 internal _amountTaken = 0;
 
-  uint256 private _startAmount;
-  uint256 private _amount;
-  uint256 private _spentAmount;
+  uint256 internal _min;
+  uint256 internal _max;
+  uint256 internal _balance;
+
+  uint256 internal _startAmount;
+  uint256 internal _amount;
+  uint112 internal _mtAmount;
+  uint256 internal _spentAmount;
 
   mapping(address => uint256) internal _userAmount;
 
@@ -32,16 +35,17 @@ contract Sales is Access
   mapping(uint256 => uint256) internal _priceBufferByAmount;
 
 
-  IERC20 private _tokenContract;
-  IMTOracle private _oracle;
+  IERC20 internal _tokenContract;
+  IMTOracle internal _oracle;
 
-  constructor(address token, uint256 price_, uint256 amount, uint256 min, uint256 max, uint256 start, uint256 end, address oracle)
+  constructor(address token, uint256 price_, uint256 amount, uint256 min, uint256 max, uint256 start, uint256 end, address oracle, uint112 mtAmount)
   {
     _grantRole(DEFAULT_ADMIN_ROLE, _msgSender());
     _tokenContract = IERC20(token);
     _oracle = IMTOracle(oracle);
 
     _amount = amount;
+    _mtAmount = mtAmount;
     _startAmount = amount;
 
     _min = min;
@@ -66,13 +70,14 @@ contract Sales is Access
     require(_end > block.timestamp, "Sale: you cannot start this sale again");
 
     _tokenContract.transferFrom(_msgSender(), address(this), amount);
+    IERC20(_oracle.masterTokenAddress()).transferFrom(_msgSender(), address(this), _mtAmount);
     _amount = _tokenContract.balanceOf(address(this));
     _takeSnapshot(_start, _amount, _price);
   }
 
 
   /// This function allow to buy tokens
-  function buy(address token, uint112 amount) public
+  function buy(address token, uint112 amount, uint112 masterTokens) public
   {
     require(
       super.hasRole(OPERATOR, super._msgSender()) ||
@@ -85,7 +90,7 @@ contract Sales is Access
     require(block.timestamp >= _start, "Sales: sale is not started yet");
 
     // amount of tokens that user will get by other ERC20 token's price
-    uint amount_ = expected(amount);
+    uint amount_ = expected(amount, masterTokens);
     _amountTaken += amount_;
 
     require(amount_ >= _min && amount_ <= _max, "Sales: amount is not in diapason");
@@ -102,7 +107,7 @@ contract Sales is Access
     tokenContractClient.transferFrom(_msgSender(), address(this), amount_);
     _tokenContract.transfer(_msgSender(), amount_);
 
-    _updatePrice();
+    _updatePrice(amount_);
     _takeSnapshot(block.timestamp, _tokenContract.balanceOf(address(this)), price());
   }
 
@@ -132,7 +137,7 @@ contract Sales is Access
 
     _userAmount[_msgSender()] += amount_;
     
-    _updatePrice();
+    _updatePrice(amount_);
     _takeSnapshot(block.timestamp, _tokenContract.balanceOf(address(this)), price());
 
 
@@ -188,7 +193,7 @@ contract Sales is Access
   }
 
   /// This function updates price depends on how much token where bought
-  function _updatePrice() private
+  function _updatePrice(uint mtAmount) private
   {
     /// discount calculates by formula:
     /// d = 1 - (a * 100% / b)
@@ -196,13 +201,14 @@ contract Sales is Access
     /// e.g. returns if user has 0 master tokens
     /// he/she must pay 100% of price
     /// if he has 25% of tokens, he/she will pay just 75% of price etc.
-    _discount = 1 - (IERC20(_oracle.masterTokenAddress()).balanceOf(_msgSender()) * 100 / IERC20(_oracle.masterTokenAddress()).balanceOf(address(this)));
-    
+    uint256 balance = IERC20(_oracle.masterTokenAddress()).balanceOf(address(this));
+    uint discount = uint(UQ112x112.encode(uint112(mtAmount)).uqdiv(uint112(balance)));
+
     /// price will be updated using this formula:
     //
     /// price = (currentPrice + (amountTaken / currentAmount)) * discount;
     /// where discount is in percents
-    _price = (_price + (_amountTaken / _tokenContract.balanceOf(address(this)))) * _discount;
+    _price = (_price + (_amountTaken / _tokenContract.balanceOf(address(this)))) * (1 - discount);
   }
 
 
@@ -217,10 +223,10 @@ contract Sales is Access
   /// show expected tokens that user can buy
   /// enter amount of token u want to sell
   /// and function will return u expected count of token u will get
-  function expected(uint112 amount) public view returns(uint)
+  function expected(uint112 amount, uint112 discount) public view returns(uint)
   {
     // get current price and return expected amount
-    return amount / (_price * _discount);
+    return amount / (_price * discount);
   }
 
 
@@ -306,30 +312,5 @@ contract Sales is Access
     _priceBuffer[time] = price_;
     _priceBufferByAmount[amount] = price_;
   }
-
-
-
-  // helpers remove after testing
-  function setEndDate(uint256 end) public 
-  {
-    _end = end;
-  }
-
-  function setStartDate(uint256 start) public 
-  {
-    _start = start;
-  }
-
-  function getEndDate() public view returns(uint256)
-  {
-    return _end;
-  }
-
-  function getStartDate() public view returns(uint256)
-  {
-    return _start;
-  }
-
-
 
 }

@@ -1,7 +1,8 @@
 const truffleAssert = require('truffle-assertions');
 const BigNumber = require('bignumber.js');
-const Sales = artifacts.require("Sales");
+const Sales = artifacts.require("SalesTest");
 const Token = artifacts.require("Token");
+const Oracle = artifacts.require("MTOracle");
 
 
 contract.only("Sales", function(accounts)
@@ -18,6 +19,21 @@ contract.only("Sales", function(accounts)
 
     let timeout = ms => {
         return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    // decode encoded values of uniswap
+    // it's needed to return number with 
+    // fixed point value
+    let decode = num =>
+    {
+        return num / 2**112;
+    }
+
+    function toBN(num, acc = 0)
+    {
+        num = new BigNumber(num)
+        acc = acc >= 0 ? acc : 0;
+        return num.dividedBy(`1e${acc}`).toFormat()
     }
 
     describe("test min()", async () =>
@@ -69,46 +85,72 @@ contract.only("Sales", function(accounts)
         token,
         usd,
         bnb;
+    let masterToken;
     
     // default start amount for private sale
     const startAmount = new BigNumber('20000e18')   // 20,000 tokens
-    let userBuy = new BigNumber('500e18')           // 100 - 50
+    let userBuy = new BigNumber('500e18')           // 500
 
-    let startDate = parseInt(Date.now() / 1000)
-    let endDate = parseInt(startDate + 10000000000)
+    let startDate = parseInt(Date.now() / 1000)     // date now in secconds
+    let endDate = parseInt(startDate + 10000000000) // end date in secconds
 
     before(async() => 
     {   
         // deployin tokens
         usd = await Token.new("US Dollar", "USD")
         bnb = await Token.new("Binance", "BNB")
+        masterToken = await Token.new("Binance", "BNB")
+        
+
+        // define oracle
+        let oracle = await Oracle.new(masterToken.address)
 
         // deploy sale with default parameters
         //(address token, uint256 price_, uint256 amount, uint256 start, uint256 end, Tactic tactic)
         console.log(startDate +" "+ endDate)
 
-        tokenPrice = new BigNumber('10')
+        tokenPrice = new BigNumber('10e18')         // 10 USDT price
+        let transferTo = new BigNumber('200e18')    // 200 
 
-        sales = await Sales.new(usd.address, tokenPrice, startAmount, min, max, startDate, endDate, 0)
+        sales = await Sales.new(usd.address, tokenPrice, startAmount, min, max, startDate, endDate, oracle.address, startAmount)
 
         // transfer bnb tokens to test contract
-        let transferTo = new BigNumber('200e18')
+        await bnb.transfer(accounts[1], transferTo)     // transfer 200 tokens to 2-nd account
+        await bnb.transfer(accounts[5], transferTo)     // transfer 200 tokens to 6-th account
 
-        await bnb.transfer(accounts[1], transferTo)
-        await bnb.transfer(accounts[5], transferTo)
 
-        //add users to whitelist
-        await sales.addOperator(accounts[1])
-        await sales.addWLInvestor(accounts[5], {from: accounts[1]})
+        await sales.addOperator(accounts[1])                            // grant role operator to 2-nd account
+        await sales.addWLInvestor(accounts[5], {from: accounts[1]})     // grant role investor to 6-th account
 
         // create private sale with usd token, amount - 20000
         await usd.approve(sales.address, startAmount)
+        await masterToken.approve(sales.address, startAmount)
         await sales.startSale(startAmount)
     })
     
     // check buy
     describe("test buy()", async () =>
     {
+        it.only("buy(): check if user can buy tokens from contract", async () => 
+        {
+            let discount = new BigNumber(`${await sales.discount(2500)}e18`)
+            let percent = new BigNumber(`${await sales.percentage(2500)}e18`)
+            let percent2 = new BigNumber(`${await sales.percentage2(2500)}e18`)
+
+            console.log(`${(toBN(decode(discount))*100).toFixed(1)}%`)
+
+            console.log(`${toBN(percent)}%`)
+            console.log(`${toBN(discount)}%`)
+
+            console.log(`${toBN(decode(percent))}%`)
+            console.log(`${toBN(decode(discount))}%`)
+
+            console.log('\n\n');
+
+            console.log(`${toBN(await masterToken.balanceOf(sales.address), 18)}%`)
+            console.log(`${toBN(decode(percent2), 18)}%`)
+        })
+
         it("buy(): check if user can buy tokens from contract", async () => 
         {
             await bnb.approve(sales.address, userBuy, {from: accounts[1]}) 

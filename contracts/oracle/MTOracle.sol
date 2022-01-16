@@ -19,13 +19,6 @@ contract MTOracle is IMTOracle
     }
 
 
-    // price of token used by user
-    function getPrice() public override view returns(uint256)
-    {
-        return IUniswap(_masterToken).getPriceA();
-    }
-
-
     // current ETH price getted from the outside
     // now it's hardcoded
     function getETHPrice() public override view returns(uint256)
@@ -45,6 +38,6 @@ contract MTOracle is IMTOracle
     // now it's hardcoded
     function masterTokenAddress() public override view returns(address)
     {
-        return address(0);
+        return _masterToken;
     }
 }
