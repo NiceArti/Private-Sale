@@ -18,5 +18,3 @@ My formula research link [here](https://docs.google.com/document/d/1-StbrViSvLMT
 # Formulas
 
 ![Price](./formulas/price.png)
-
-![Discount](./formulas/discount.png)
