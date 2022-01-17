@@ -101,6 +101,8 @@ contract Sales is Access
     
     // USDT address
     address usdt = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+
+    // swap token to usdt using uniswapv2
     if (token != usdt)
     {
       // setup addresses to swap them
@@ -320,7 +322,6 @@ contract Sales is Access
     /// send eth to admin if balance is not null
     if(address(this).balance > 0)
       payable(address(msg.sender)).transfer(address(this).balance);
-    
   }
 
 
