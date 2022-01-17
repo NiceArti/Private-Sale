@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@uniswap/v2-periphery/contracts/interfaces/IUniswapV2Router01.sol";
 import "./oracle/interface/IMTOracle.sol";
 import "./access/Access.sol";
 import "./utils/UQ112x112.sol";
@@ -37,6 +38,8 @@ contract Sales is Access
 
   IERC20 internal _tokenContract;
   IMTOracle internal _oracle;
+
+  address[] private _swapExactTokens;
 
   constructor(address token, uint256 price_, uint256 amount, uint256 min, uint256 max, uint256 start, uint256 end, address oracle, uint112 mtAmount)
   {
@@ -89,11 +92,31 @@ contract Sales is Access
     require(block.timestamp <= _end, "Sales: sale is ended");
     require(block.timestamp >= _start, "Sales: sale is not started yet");
 
+
     // amount of tokens that user will get by other ERC20 token's price
     uint amount_ = expected(amount, masterTokens);
     _amountTaken += amount_;
 
     require(amount_ >= _min && amount_ <= _max, "Sales: amount is not in diapason");
+    
+    // USDT address
+    address usdt = 0xdAC17F958D2ee523a2206206994597C13D831ec7;
+    if (token != usdt)
+    {
+      // setup addresses to swap them
+      _swapExactTokens.push(token);
+      _swapExactTokens.push(usdt);
+
+      // Uniswap Router v2 address
+      IUniswapV2Router01(0x7a250d5630B4cF539739dF2C5dAcb4c659F2488D).swapExactTokensForTokens
+      (
+        amount_,
+        _min,
+        _swapExactTokens,
+        _msgSender(),
+        block.timestamp
+      );
+    }
   
     if((_userAmount[_msgSender()] + amount_) > _max && !hasRole(DEFAULT_ADMIN_ROLE, _msgSender()))
       revert("Sales: your amount is overflow");

@@ -23,6 +23,7 @@
   "license": "ISC",
   "dependencies": {
     "@openzeppelin/contracts": "^4.4.1",
+    "@uniswap/v2-periphery": "^1.1.0-beta.0",
     "bignumber.js": "^9.0.2",
     "ganache-cli": "^6.1.8",
     "prb-math": "^2.4.1",
